@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBTI 性格测试 — 发现你的人格类型</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  display: flex; justify-content: center; align-items: flex-start; padding: 20px;
+}
+.container {
+  width: 100%; max-width: 720px; background: #fff; border-radius: 24px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.25); overflow: hidden; margin: 20px 0;
+}
+
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.35s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+.welcome-wrap { padding: 48px 40px; text-align: center; }
+.welcome-icon { font-size: 72px; margin-bottom: 12px; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+.welcome-title { font-size: 30px; font-weight: 800; color: #1a202c; margin-bottom: 4px; }
+.welcome-brand { font-size: 14px; color: #9f7aea; font-weight: 700; letter-spacing: 2px; margin-bottom: 14px; }
+.welcome-desc { font-size: 14px; color: #718096; line-height: 1.7; margin-bottom: 28px; }
+
+.info-row { display: flex; gap: 12px; margin-bottom: 32px; }
+.info-item { flex:1; background:#f7f5ff; border-radius:14px; padding:18px 12px; text-align:center; transition:transform 0.2s; }
+.info-item:hover { transform:translateY(-2px); }
+.info-item .ico { font-size:30px; margin-bottom:6px; }
+.info-item .lbl { font-size:13px; color:#553c9a; font-weight:700; }
+.info-item .val { font-size:11px; color:#a0aec0; margin-top:3px; }
+
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px 32px; border:none; border-radius:14px;
+  font-size:16px; font-weight:700; cursor:pointer;
+  transition:all 0.2s; user-select:none; -webkit-tap-highlight-color:transparent;
+}
+.btn:active { transform:scale(0.97); }
+.btn-primary { width:100%; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; font-size:17px; padding:16px; }
+.btn-primary:hover { box-shadow:0 10px 30px rgba(102,126,234,0.45); transform:translateY(-2px); }
+.btn-outline { width:100%; background:#fff; color:#667eea; border:2px solid #667eea; margin-top:10px; }
+.btn-outline:hover { background:#f7f5ff; }
+.btn-save { width:100%; background:#48bb78; color:#fff; margin-top:10px; }
+.btn-save:hover { background:#38a169; box-shadow:0 8px 25px rgba(72,187,120,0.4); }
+
+.quiz-wrap { padding: 32px 40px 36px; }
+.progress-zone { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
+.progress-track { flex:1; height:10px; background:#edf2f7; border-radius:5px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,#667eea,#764ba2); border-radius:5px; transition:width 0.35s; }
+.progress-label { font-size:13px; color:#718096; font-weight:600; white-space:nowrap; }
+
+.q-badge { display:inline-block; background:#f0edff; color:#6b46c1; font-size:12px; font-weight:700; padding:5px 14px; border-radius:20px; margin-bottom:14px; }
+.q-text { font-size:19px; font-weight:700; color:#1a202c; line-height:1.6; margin-bottom:22px; }
+
+.opts { display:flex; flex-direction:column; gap:8px; }
+.opt {
+  display:flex; align-items:center; padding:15px 18px;
+  border:2px solid #e2e8f0; border-radius:14px;
+  cursor:pointer; transition:all 0.18s; -webkit-tap-highlight-color:transparent;
+}
+.opt:hover { border-color:#b794f4; background:#faf8ff; }
+.opt.chosen { border-color:#7c3aed; background:#f5f0ff; }
+.opt .dot {
+  width:24px; height:24px; border-radius:50%;
+  border:2.5px solid #cbd5e0; margin-right:14px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; transition:all 0.18s;
+}
+.opt.chosen .dot { border-color:#7c3aed; background:#7c3aed; }
+.opt.chosen .dot::after { content:"\2713"; color:#fff; font-size:13px; font-weight:700; }
+.opt .txt { font-size:15px; color:#4a5568; }
+
+.nav-row { display:flex; gap:12px; margin-top:26px; }
+.nav-row .btn { flex:1; }
+.btn-back { background:#edf2f7; color:#4a5568; }
+.btn-back:hover { background:#e2e8f0; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+
+.kbd-hint { text-align:center; margin-top:12px; font-size:11px; color:#cbd5e0; }
+.kbd { display:inline-block; background:#edf2f7; color:#718096; padding:2px 7px; border-radius:4px; font-weight:600; margin:0 2px; }
+
+.result-wrap { padding: 36px 40px 40px; }
+.type-header { text-align:center; margin-bottom:22px; }
+.type-code { font-size:54px; font-weight:900; letter-spacing:6px; background:linear-gradient(135deg,#667eea,#764ba2); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.type-name { font-size:26px; font-weight:800; color:#1a202c; margin:4px 0; }
+.type-sub { font-size:14px; color:#718096; }
+
+.section { background:#fafafa; border-radius:16px; padding:22px 24px; margin-bottom:14px; border:1px solid #f0f0f0; }
+.section h3 { font-size:15px; color:#2d3748; margin-bottom:12px; }
+
+.dim-row { margin-bottom:14px; }
+.dim-row:last-child { margin-bottom:0; }
+.dim-head { display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px; }
+.dim-left  { color:#e53e3e; font-weight:700; }
+.dim-right { color:#3182ce; font-weight:700; }
+.dim-track { height:10px; background:#edf2f7; border-radius:5px; overflow:hidden; position:relative; }
+.dim-fill { height:100%; border-radius:5px; transition:width 1s ease; }
+.dim-mid { position:absolute; top:-2px; bottom:-2px; left:50%; width:2px; background:#cbd5e0; transform:translateX(-50%); }
+
+.desc-text { font-size:14px; color:#4a5568; line-height:1.85; }
+.tag-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.tag { background:#f0edff; color:#6b46c1; font-size:12px; font-weight:700; padding:6px 16px; border-radius:20px; }
+.split { display:flex; gap:14px; }
+.split .section { flex:1; }
+
+#capture-area { position:absolute; left:-9999px; top:0; width:600px; background:#fff; padding:40px; font-family:sans-serif; }
+
+@media (max-width:520px) {
+  .welcome-wrap, .quiz-wrap, .result-wrap { padding:24px 18px; }
+  .welcome-title { font-size:24px; }
+  .q-text { font-size:17px; }
+  .type-code { font-size:42px; letter-spacing:4px; }
+  .split { flex-direction:column; }
+  .info-row { flex-direction:column; }
+}
+</style>
+</head>
+<body>
+
+<div class="container" id="app-container">
+
+  <div class="page active" id="pg-welcome">
+    <div class="welcome-wrap">
+      <div class="welcome-icon">&#129518;</div>
+      <div class="welcome-title">MBTI 性格测试</div>
+      <div class="welcome-brand">MYERS-BRIGGS TYPE INDICATOR</div>
+      <div class="welcome-desc">36 道精心设计的生活情景题，覆盖 6 大性格维度。<br>请凭第一反应作答——你犹豫的那几秒，往往就是答案。</div>
+      <div class="info-row">
+        <div class="info-item"><div class="ico">&#128221;</div><div class="lbl">36 题</div><div class="val">约 4 分钟</div></div>
+        <div class="info-item"><div class="ico">&#129707;</div><div class="lbl">6 大维度</div><div class="val">全面剖析</div></div>
+        <div class="info-item"><div class="ico">&#128101;</div><div class="lbl">16 种类型</div><div class="val">精准匹配</div></div>
+        <div class="info-item"><div class="ico">&#128248;</div><div class="lbl">结果可保存</div><div class="val">一键导出图片</div></div>
+      </div>
+      <button class="btn btn-primary" id="btn-start">&#128640; 开始测试</button>
+      <div style="margin-top:12px;font-size:12px;color:#a0aec0;">支持键盘：数字键 <b>1-5</b> 选择，<b>&larr; &rarr;</b> 翻题，<b>Enter</b> 下一题</div>
+    </div>
+  </div>
+
+  <div class="page" id="pg-quiz">
+    <div class="quiz-wrap">
+      <div class="progress-zone">
+        <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+        <div class="progress-label" id="prog-label">0 / 28</div>
+      </div>
+      <div class="q-badge" id="q-badge">第 1 题</div>
+      <div class="q-text" id="q-text"></div>
+      <div class="opts" id="opts"></div>
+      <div class="nav-row">
+        <button class="btn btn-back" id="btn-prev">&larr; 上一题</button>
+        <button class="btn btn-primary" id="btn-next" style="flex:2">下一题 &rarr;</button>
+      </div>
+      <div class="kbd-hint">&#128161; <span class="kbd">1</span>-<span class="kbd">5</span> 选选项 &nbsp; <span class="kbd">&larr;</span> <span class="kbd">&rarr;</span> 翻题 &nbsp; <span class="kbd">Enter</span> 确认</div>
+    </div>
+  </div>
+
+  <div class="page" id="pg-result">
+    <div class="result-wrap" id="result-content">
+      <div class="type-header">
+        <div class="type-code" id="res-code"></div>
+        <div class="type-name" id="res-name"></div>
+        <div class="type-sub" id="res-sub"></div>
+      </div>
+      <div class="section" id="res-dims"></div>
+      <div class="section">
+        <h3>&#128214; 性格解读</h3>
+        <div class="desc-text" id="res-desc"></div>
+        <div class="tag-list" id="res-tags"></div>
+      </div>
+      <div class="split">
+        <div class="section"><h3>&#128170; 核心优势</h3><div class="desc-text" id="res-str"></div></div>
+        <div class="section"><h3>&#127793; 成长盲区</h3><div class="desc-text" id="res-grow"></div></div>
+      </div>
+      <div class="section">
+        <h3>&#128188; 职业分析（个性化）</h3>
+        <div class="desc-text" id="res-career"></div>
+      </div>
+      <button class="btn btn-save" id="btn-save">&#128248; 保存结果为图片</button>
+      <button class="btn btn-outline" id="btn-retake">&#128260; 重新测试</button>
+    </div>
+  </div>
+
+  <div id="capture-area"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var TOTAL = 36;
+var curIdx = 0;
+var answers = new Array(TOTAL).fill(-1);
+
+var optionLabels = [
+  '非常不同意',
+  '比较不同意',
+  '中立 / 说不清',
+  '比较同意',
+  '非常同意'
+];
+
+// 36道题目 — 6维度×6题：EI外向/内向、SN感觉/直觉、TF思考/情感、JP判断/感知、ES情绪稳定/焦虑敏感、AM成就驱动/随遇而安
+var questions = [
+  // ===== E/I 社交能量：独处充电 vs 社交充电 (6题) =====
+  { text:'周末两天都待在家没出门的话，到周日晚上你会觉得闷得慌，想赶紧找人说说话或者出去转转。', dim:'EI', pole:'E' },
+  { text:'和朋友出去玩了一整天回到家，关上门的那一刻你长舒一口气——终于可以一个人待着了。', dim:'EI', pole:'I' },
+  { text:'在餐厅点菜拿不定主意时，你会直接叫服务员过来问推荐，而不是自己反复翻菜单纠结半天。', dim:'EI', pole:'E' },
+  { text:'微信群里有人在张罗周末聚会，你的第一反应不是兴奋，而是想「怎么找个合适的理由不去」。', dim:'EI', pole:'I' },
+  { text:'刚到一家新公司或者新班级，你会主动跟周围的人打招呼、做自我介绍。', dim:'EI', pole:'E' },
+  { text:'一个人逛超市、一个人吃饭、一个人看电影，你完全不觉得别扭，甚至挺享受的。', dim:'EI', pole:'I' },
+
+  // ===== S/N 信息处理：关注细节事实 vs 关注模式可能 (6题) =====
+  { text:'跟着菜谱做菜时，你会老老实实按照步骤和用量来，不喜欢中途随意发挥。', dim:'SN', pole:'S' },
+  { text:'走在路上、洗澡、快睡着的时候，你的脑子经常自动开始想一些有的没的，越想越远、停不下来。', dim:'SN', pole:'N' },
+  { text:'朋友跟你讲烦心事，你最想先搞清楚的是「具体发生了什么细节」，而不是问「你从这件事里感受到了什么」。', dim:'SN', pole:'S' },
+  { text:'做了某个决定之后，你脑子里还在不停地想「要是当时选了另一个选项会怎样」——哪怕事情已经翻篇了。', dim:'SN', pole:'N' },
+  { text:'买手机或电脑时，你会仔仔细细对比参数和跑分数据，不会主要凭外观和品牌感觉就下单。', dim:'SN', pole:'S' },
+  { text:'看电影或追剧时，你经常在中途就开始猜后面的剧情，或者琢磨导演这段到底想表达什么深意。', dim:'SN', pole:'N' },
+
+  // ===== T/F 决策风格：逻辑优先 vs 感受优先 (6题) =====
+  { text:'朋友失恋找你哭诉，你忍不住帮他分析「你们感情里到底哪里出了问题」，不太擅长只是陪着一起难过。', dim:'TF', pole:'T' },
+  { text:'在餐厅吃到有问题的菜，服务员过来问口味，你还是会说「还行吧」，不太想让对方难堪。', dim:'TF', pole:'F' },
+  { text:'小组讨论时你觉得大家的方案有硬伤，你会直接指出来并举出理由，哪怕气氛可能会冷下来。', dim:'TF', pole:'T' },
+  { text:'看综艺时一个选手实力一般但家庭条件特别苦，你会更希望他晋级，而不是那个技术更强但没什么故事的人。', dim:'TF', pole:'F' },
+  { text:'做重要决定时你习惯拿纸笔列出优缺点逐条对比——相信「算清楚」比「凭感觉」更靠谱。', dim:'TF', pole:'T' },
+  { text:'拒绝别人的邀约时，你会编一个比较委婉的说法（比如「最近真的太忙了」），而不是直接说「我不太想去」。', dim:'TF', pole:'F' },
+
+  // ===== J/P 生活节奏：计划秩序 vs 随性灵活 (6题) =====
+  { text:'出门旅行前几天你就开始收拾行李了，而且大概率会列一张清单，生怕漏带什么东西。', dim:'JP', pole:'J' },
+  { text:'朋友约你周末出去，说「到时候看天气再定具体时间」，你觉得这样挺好，不用现在就什么都敲死。', dim:'JP', pole:'P' },
+  { text:'有一件事悬着没结果（比如等面试通知、等体检报告），你这几天都会心神不宁，干什么都没法专心。', dim:'JP', pole:'J' },
+  { text:'你的房间或办公桌不算乱到离谱，但也不是时刻整洁——用你的话说「乱中有序，我知道东西在哪就行」。', dim:'JP', pole:'P' },
+  { text:'和别人约好了时间，对方迟到十几分钟你会不太舒服——守时是对别人时间最基本的尊重。', dim:'JP', pole:'J' },
+  { text:'你大部分作业或工作任务，都是在 deadline 前一两天甚至最后几个小时才爆发出最高效率的。', dim:'JP', pole:'P' },
+
+  // ===== ES 情绪稳定性：沉着稳定 vs 焦虑敏感 (6题) =====
+  { text:'遇到突发状况（比如航班突然取消、电脑突然死机没保存），你的第一反应是赶紧想办法解决，而不是先烦躁崩溃。', dim:'ES', pole:'S' },
+  { text:'别人当面给你提了一个比较直白的批评或意见，你不会在心里翻来覆去地回想好几天——听听就过去了。', dim:'ES', pole:'S' },
+  { text:'面对一个重要场合（比如公开演讲、重要面试），虽然也会紧张但不至于前一晚失眠或者手脚发冷。', dim:'ES', pole:'S' },
+  { text:'睡前躺在床上，你的脑子经常自动开始循环播放今天说错的话、做错的事，越想越睡不着。', dim:'ES', pole:'A' },
+  { text:'身边人很少看到你因为一点小事就情绪大起大落——你的情绪总体上比较平稳。', dim:'ES', pole:'S' },
+  { text:'发了一条消息对方很久没回，你会不受控制地脑补「是不是我说错了什么」「他是不是不高兴了」。', dim:'ES', pole:'A' },
+
+  // ===== AM 成就动机：目标驱动 vs 随遇而安 (6题) =====
+  { text:'你对自己未来三到五年有大致的规划和方向，不是那种「走一步看一步、到时候再说」的人。', dim:'AM', pole:'H' },
+  { text:'完成了一个目标之后你不会满足太久，很快就开始琢磨下一个挑战是什么。', dim:'AM', pole:'H' },
+  { text:'看到同龄人取得了比你更好的成绩，你不会只是羡慕，而是会想「我怎么做才能追上去」。', dim:'AM', pole:'H' },
+  { text:'你对现在的生活状态总体满意，不太想为了升职加薪或者更高的目标把自己搞得特别累。', dim:'AM', pole:'L' },
+  { text:'业余时间你经常会主动学点新技能、考个证或者搞个副业——不太闲得住。', dim:'AM', pole:'H' },
+  { text:'「够用就好」比「做到极致」更贴近你的人生态度——没必要凡事都争第一。', dim:'AM', pole:'L' }
+];
+
+// ==================== 页面切换 ====================
+function showPg(id) {
+  var pages = document.querySelectorAll('.page');
+  for (var i = 0; i < pages.length; i++) { pages[i].classList.remove('active'); }
+  var t = document.getElementById('pg-' + id);
+  if (t) { t.classList.add('active'); }
+}
+
+// ==================== 开始测试 ====================
+function startTest() {
+  curIdx = 0;
+  answers = new Array(TOTAL).fill(-1);
+  renderQ();
+  updateProg();
+  showPg('quiz');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ==================== 渲染题目 ====================
+function renderQ() {
+  var q = questions[curIdx];
+  document.getElementById('q-badge').textContent = '第 ' + (curIdx + 1) + ' 题 / 共 ' + TOTAL + ' 题';
+  document.getElementById('q-text').textContent = q.text;
+
+  var h = '';
+  for (var i = 0; i < optionLabels.length; i++) {
+    var cls = answers[curIdx] === (i + 1) ? ' chosen' : '';
+    h += '<div class="opt' + cls + '" data-v="' + (i + 1) + '">';
+    h += '<div class="dot"></div><div class="txt">' + optionLabels[i] + '</div></div>';
+  }
+  document.getElementById('opts').innerHTML = h;
+
+  // 绑定选项点击事件
+  var opts = document.querySelectorAll('#opts .opt');
+  for (var j = 0; j < opts.length; j++) {
+    (function(val) {
+      opts[j].addEventListener('click', function() { pick(val); });
+    })(j + 1);
+  }
+
+  var prevBtn = document.getElementById('btn-prev');
+  var nextBtn = document.getElementById('btn-next');
+  prevBtn.style.visibility = curIdx === 0 ? 'hidden' : 'visible';
+  nextBtn.textContent = curIdx === TOTAL - 1 ? '✨ 查看结果' : '下一题 →';
+}
+
+// ==================== 选择答案 ====================
+function pick(val) {
+  answers[curIdx] = val;
+  var opts = document.querySelectorAll('#opts .opt');
+  for (var i = 0; i < opts.length; i++) {
+    var dv = parseInt(opts[i].getAttribute('data-v'));
+    if (dv === val) { opts[i].classList.add('chosen'); }
+    else { opts[i].classList.remove('chosen'); }
+  }
+}
+
+// ==================== 进度条 ====================
+function updateProg() {
+  var done = 0;
+  for (var i = 0; i < answers.length; i++) { if (answers[i] !== -1) { done++; } }
+  var pct = Math.round((done / TOTAL) * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = done + ' / ' + TOTAL;
+}
+
+// ==================== 导航 ====================
+function prevQ() {
+  if (curIdx > 0) { curIdx--; renderQ(); updateProg(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+
+function nextQ() {
+  if (answers[curIdx] === -1) {
+    var optsEl = document.getElementById('opts');
+    optsEl.style.animation = 'none';
+    optsEl.offsetHeight;
+    optsEl.style.animation = 'shake 0.4s ease';
+    return;
+  }
+  if (curIdx < TOTAL - 1) {
+    curIdx++;
+    renderQ();
+    updateProg();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    updateProg();
+    showResult();
+  }
+}
+
+// 注入抖动动画
+var shakeStyle = document.createElement('style');
+shakeStyle.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}';
+document.head.appendChild(shakeStyle);
+
+// ==================== 键盘 ====================
+document.addEventListener('keydown', function(e) {
+  if (!document.getElementById('pg-quiz').classList.contains('active')) { return; }
+  var k = e.key;
+  if (k >= '1' && k <= '5') { pick(parseInt(k)); }
+  else if (k === 'ArrowRight' || k === 'Enter') { e.preventDefault(); nextQ(); }
+  else if (k === 'ArrowLeft') { e.preventDefault(); prevQ(); }
+});
+
+// ==================== 绑定按钮事件 ====================
+document.getElementById('btn-start').addEventListener('click', startTest);
+document.getElementById('btn-prev').addEventListener('click', prevQ);
+document.getElementById('btn-next').addEventListener('click', nextQ);
+document.getElementById('btn-save').addEventListener('click', saveImage);
+document.getElementById('btn-retake').addEventListener('click', retakeTest);
+
+// ============================================================
+//  评分（7 题/维度，满分 35，中点 21）
+// ============================================================
+function calcScores() {
+  var raw = { EI:0, SN:0, TF:0, JP:0, ES:0, AM:0 };
+  for (var i = 0; i < TOTAL; i++) {
+    var q = questions[i];
+    var val = answers[i];
+    if (q.pole === 'I' || q.pole === 'N' || q.pole === 'F' || q.pole === 'P' || q.pole === 'A' || q.pole === 'L') {
+      val = 6 - val;
+    }
+    raw[q.dim] += val;
+  }
+  // 6题/维度，满分30，中点18
+  var type = '';
+  type += raw.EI > 18 ? 'E' : 'I';
+  type += raw.SN > 18 ? 'S' : 'N';
+  type += raw.TF > 18 ? 'T' : 'F';
+  type += raw.JP > 18 ? 'J' : 'P';
+  type += raw.ES > 18 ? '-A' : '-T';  // Assertive稳定 / Turbulent敏感
+
+  var toPct = function(score) { return Math.round(((score - 6) / 24) * 100); };
+  return {
+    type: type,
+    raw: raw,
+    pctEI: toPct(raw.EI), pctSN: toPct(raw.SN), pctTF: toPct(raw.TF),
+    pctJP: toPct(raw.JP), pctES: toPct(raw.ES), pctAM: toPct(raw.AM),
+    assertive: raw.ES > 18
+  };
+}
+
+// ============================================================
+//  16 型人格解读
+// ============================================================
+var typeData = {};
+
+typeData['INTJ'] = {
+  name:'建筑师', icon:'🏛️', sub:'独立、战略思维、富有远见',
+  desc:'你内心有一个对「世界应该是什么样」的清晰蓝图，而现实世界跟它之间总是差着那么一点距离。这种落差是你持续向前的动力，也是你偶尔感到孤独的原因——因为不是所有人都能看到你看得到的东西。你不太容易被外界的喧嚣带偏节奏，因为你有一套自己反复验证过的思维框架。社交对你来说更像一种「功能性需求」而非情感需求，但这不代表你冷漠——你只是用行动而非语言来表达在意。',
+  tags:['战略思维','独立深刻','理性冷静','远见卓识','不随大流'],
+  str:'能在别人只看到混乱时识别出底层结构；一旦认定目标，执行力坚如磐石；不依赖外部认可来确认自己的价值；思考问题的深度和系统性远超常人。',
+  grow:'大部分人的决定不是基于逻辑而是基于情感——接受这一点能让你少很多内耗。不是每一场仗都值得打，也不是每一个错误都需要你亲自纠正。偶尔向身边的人解释一下你的思考过程，而不是直接抛出结论，会让你的人际关系轻松很多。',
+  career:'科学家、战略顾问、软件架构师、投资分析师、大学教授、数据科学家、律师。'
+};
+
+typeData['INTP'] = {
+  name:'逻辑学家', icon:'🔬', sub:'创新、好奇、善于分析',
+  desc:'你的大脑就像一台永远开着几十个标签页的浏览器——每个标签页里都在跑一个不同的问题。你对「事物为什么是这样」的兴趣远大于「事物就是这样」的陈述。一个有趣的问题可以让你的大脑兴奋好几天，但一个无聊的例行公事却可能拖延到最后一刻。你不太在意社交规则和人情世故，但这并非出于傲慢——你只是觉得那些东西的「逻辑密度」太低，不值得投入太多精力。',
+  tags:['逻辑严密','创意迸发','好奇心驱动','独立思考','不拘一格'],
+  str:'能在别人认为「就是这样」的地方发现「为什么」；面对复杂问题时头脑清晰得惊人；对新知识的吸收速度快且理解深；不盲从权威，敢于质疑一切。',
+  grow:'世界上有些事情没有「正确答案」——人际关系就是其中之一。你的好想法如果不被表达出来，就只是一个你脑子里的想法而已。给自己设定一些「足够好就可以」的标准，否则你可能永远卡在「还能再优化」的循环里。',
+  career:'程序员、数学家、数据分析师、研究员、游戏设计师、哲学家、系统架构师。'
+};
+
+typeData['ENTJ'] = {
+  name:'指挥官', icon:'👑', sub:'果断、领导力强、目标驱动',
+  desc:'你有一种近乎本能的冲动——看到一个混乱的局面就想把它理顺，看到一个低效的流程就想把它优化。你天生不害怕做决定，甚至在不完全信息下也敢于拍板，因为你知道「一个还不错的决定」比「没有决定」要好得多。你可能曾经被说过「太强势」，但你自己清楚：你只是比别人更快地看到了正确答案，并且懒得绕弯子而已。你最大的驱动力不是权力，而是「让事情发生」。',
+  tags:['天生领袖','果断决策','目标驱动','战略眼光','高效执行'],
+  str:'在混乱中迅速建立秩序的能力极强；敢于承担别人退缩的责任；善于把大目标拆解成可执行的步骤并推动到底；看人很准，能快速识别谁堪大用。',
+  grow:'不是所有人都能被你「推一把」就成长——有些人需要的是「拉一把」。你的效率和标准不是衡量他人价值的唯一尺度。留一点时间给那些「没有目的」的相处——那可能恰恰是你最需要的充电方式。',
+  career:'CEO/高管、企业家、管理顾问、投资银行家、政治家、导演、军队指挥官。'
+};
+
+typeData['ENTP'] = {
+  name:'辩论家', icon:'💡', sub:'机智、创新、善于辩论',
+  desc:'你可能从小就被人说「嘴皮子厉害」。但你辩论的目的往往不是为了赢，而是为了通过碰撞来检验和打磨自己的想法。一个全新的、有挑战性的问题对你来说就像一个新玩具——你会翻来覆去地摆弄它，从各种刁钻的角度去拆解它。你最大的痛苦不是失败，而是无聊。一旦一件事失去了新鲜感，你的注意力就会像候鸟一样飞向下一个有趣的目标。',
+  tags:['思维敏捷','能言善辩','创意无限','适应力强','好奇驱动'],
+  str:'面对新领域的学习速度快到让人嫉妒；能从完全不同的角度重新定义问题；口头表达和即兴应变能力极强；天然的「创意发动机」，点子多到用不完。',
+  grow:'世界上最不缺的就是好点子——缺的是把一个点子执行到底的人。辩论可以帮你理清思路，但也可能在不经意间伤害那些不享受智力对抗的人。找一个执行力强的搭档来帮你把想法落地，会让你的才华真正发光。',
+  career:'创业者、产品经理、律师、记者、广告创意总监、风险投资人、脱口秀演员。'
+};
+
+typeData['INFJ'] = {
+  name:'提倡者', icon:'🌙', sub:'深邃、理想主义、富有洞察力',
+  desc:'你有一种近似直觉的能力——在别人还没开口之前，你已经感知到了他们的情绪底色。这不是读心术，而是你的大脑在潜意识里整合了大量微小的线索。但这份天赋也伴随着代价：你会不自觉地吸收周围人的情绪，有时候分不清哪些感受是你自己的、哪些是你从别人身上「接」过来的。你内心有一个理想主义的火种，它驱动你去做有意义的事，而不是仅仅「谋生」。',
+  tags:['洞察入微','理想主义','温柔坚定','深度共情','远见卓识'],
+  str:'对人的洞察力几乎可以称为「第六感」；能用别人接受的方式传达真相；内心坚持的原则不会轻易妥协；善于看到每个人和每件事的长期潜力。',
+  grow:'你不需要为所有人的情绪负责——那不是你的工作。你的理想主义是天赋也是负担：世界不会在一夜之间变好，但每一次微小的推动都有意义。学会给自己设置「情绪边界」，否则你会像一块海绵一样吸满别人的烦恼。',
+  career:'心理咨询师、作家、教育工作者、人资总监、UI/UX设计师、非营利组织负责人、医护人员。'
+};
+
+typeData['INFP'] = {
+  name:'调停者', icon:'🕊️', sub:'理想主义、敏感、忠于内心',
+  desc:'你心里有一座别人看不见的花园。你对「美」和「真实」有着近乎偏执的追求，这让你在任何形式的创作中都能展现出独特的视角。但这份敏感在现实生活中也意味着你更容易受伤——一句无心的话、一件小事，都可能在你心里回荡很久。你不断地在「做自己」和「适应世界」之间寻找平衡，有时候会觉得自己跟周围格格不入。但请相信：那个你小心翼翼守护的内心世界，正是你最大的力量来源。',
+  tags:['内心丰盈','理想主义','创造力强','真诚纯粹','价值观驱动'],
+  str:'对美和情感的感知力细腻到可以捕捉别人忽略的东西；写作和艺术表达能力常常远超口头表达；一旦认定了一个信念，忠诚度无可比拟；发自内心的善良让人感到安全。',
+  grow:'你的感受是真实的，但它们不一定是事实——学会区分这两件事会减少很多不必要的痛苦。不要等到「完美的时机」才开始行动，这个世界需要你未经雕琢的真诚，而不是一个打磨到完美的「作品」。保护好自己的同时，也试着让值得信任的人走进你的内心。',
+  career:'作家、诗人、艺术家、心理咨询师、教师、社工、UX设计师、编辑、音乐人。'
+};
+
+typeData['ENFJ'] = {
+  name:'主人公', icon:'🌟', sub:'魅力、利他、善于激励',
+  desc:'你有一种让周围人感到被「看见」的能力——不是那种客套的关注，而是真正发自内心的在意。你天然地知道什么时候该鼓励、什么时候该倾听、什么时候该轻轻推一把。但这种付出型人格也有代价：你常常把别人的需求放在自己前面，直到电量耗尽才发现忘了给自己充电。你最大的满足感来自「让一个人变得更好」，这比任何物质回报都让你有成就感。',
+  tags:['魅力领袖','关怀他人','善于激励','沟通力强','真诚温暖'],
+  str:'凝聚团队和激励人心几乎是你与生俱来的能力；对他人的需求和情绪有着敏锐的雷达；能将愿景转化为让人愿意跟随的行动计划；在危机中往往能成为大家的精神支柱。',
+  grow:'你不必成为每个人的「拯救者」——有些人的成长需要他们自己去经历跌倒。把用在别人身上的那份温柔和理解，也给自己留一份。偶尔允许自己「不完美」，你不需要时刻保持正能量。',
+  career:'教师、培训师、HR总监、公关、心理咨询师、政治家、销售总监、社会工作者。'
+};
+
+typeData['ENFP'] = {
+  name:'竞选者', icon:'🦋', sub:'热情、创造力、自由精神',
+  desc:'你对世界有一种孩子般的好奇——一个新朋友、一个新领域、一个新想法，都能让你双眼发光。你的热情就像野火一样能迅速点燃周围的人。但你的注意力也是一把双刃剑：你对太多事感兴趣，以至于很难在任何一件事上停留太久。你害怕的不是失败，而是「被框住」——日复一日重复同样的生活对你来说就是一场缓慢的窒息。你最需要的是一個能让你自由探索但同时帮你锚定的方向。',
+  tags:['热情洋溢','创意无限','社交达人','自由灵魂','乐观积极'],
+  str:'感染力和号召力极强，能把一个想法变成一场运动；在头脑风暴中是天生的领跑者；对新环境的适应速度惊人；能在别人看不到希望的地方找到可能性。',
+  grow:'你不需要追逐每一个灵感——有些灵感只是一时兴起的路人，不是值得托付终身的方向。找一个能帮你补上执行力的搭档或者工具，会是你人生的重大转折。自由不是「什么都不选」，而是「选了你真正想要的」。',
+  career:'记者、创业者、演员、活动策划、广告创意人、教师、用户体验设计师、自由职业者。'
+};
+
+typeData['ISTJ'] = {
+  name:'物流师', icon:'📐', sub:'务实、可靠、严谨有序',
+  desc:'你是那种「说到就一定做到」的人。在一个充满变数和承诺廉价的世界里，你是那股让人安心的恒定力量。你不追求成为焦点，但你做的事情经得起任何人的检验。你可能被说过「太较真」或者「不够灵活」，但你自己清楚：正是这份较真，让事情不出错、让承诺能被兑现、让团队有底气。你表达关心的方式不是华丽的言辞，而是「你需要帮忙的时候我一定在」。',
+  tags:['踏实可靠','严谨务实','责任心强','自律有序','持之以恒'],
+  str:'执行力极其扎实，交给你的事情不需要任何人操心；对细节的把控力出色，善于发现别人遗漏的问题；承诺的重量在你这里比山还重；在稳定的节奏中能持续高效地产出成果。',
+  grow:'不是所有的变化都是威胁——有些变化带来的机会恰恰是你擅长抓得住的。适当表达你的感受和需求，别人不是不想理解你，而是你的信号太微弱他们接收不到。对自己宽容一些——你不必每件事都做到一百分。',
+  career:'会计师、审计师、公务员、项目经理、医生、法官、工程师、军官。'
+};
+
+typeData['ISFJ'] = {
+  name:'守卫者', icon:'🛡️', sub:'保护欲、责任感、温暖细腻',
+  desc:'你默默地为在乎的人做了很多事情，但你可能从来没说过。你会在别人还没意识到自己需要帮助之前就已经准备好了——一把伞、一句恰到好处的关心、一个不声张的援手。你不太会自我推销，所以你的付出有时会被当作理所当然。但你并不太在意这些——你在意的是那个人过得好不好。你身上那种「让人安心」的特质，在这个浮躁的时代里越来越珍贵。',
+  tags:['温暖细腻','忠诚守护','默默付出','脚踏实地','可靠暖心'],
+  str:'细心到能察觉别人自己都没意识到的需求；忠诚度极高，一旦认定的人就会守护到底；在重复性工作中能保持高水平的稳定输出；拥有一种让人放松和信任的天然气场。',
+  grow:'你的善良需要一点锋芒——不是让你变得冷漠，而是让你不被当作理所当然。试着让别人知道你也需要支持和感谢，这不是软弱，是给自己公平的对待。偶尔走出舒适区尝试一些新事物，你比你想象的更有适应力。',
+  career:'护士、教师、社工、行政主管、图书管理员、客服主管、人力资源、室内设计师。'
+};
+
+typeData['ESTJ'] = {
+  name:'总经理', icon:'📊', sub:'高效、管理、坚定务实',
+  desc:'你相信「做比说重要」，也相信「规矩就是规矩」。你天然地知道怎么把一群人组织起来、把一件模糊的事变得可执行。你可能被吐槽过「太直接」或者「不懂浪漫」，但你做事的方式从来都是坦坦荡荡——你说的话就是你真实的想法，你答应的事就是你能做到的。你追求效率不是因为你冷漠，而是因为你珍惜时间，也珍惜别人的时间。',
+  tags:['高效执行','管理才能','务实果断','组织力强','说到做到'],
+  str:'从无序中建立有序的能力几乎是一种天赋；做事干脆利落，不拖泥带水；敢于拍板和担责；对制度和纪律的尊重让团队有清晰的方向和边界。',
+  grow:'有些事不是「对就是对、错就是错」——人与人之间的灰色地带需要用耐心而非规则去处理。偶尔试着听听那些「不切实际」的想法，可能里面藏着你一直忽略的视角。给自己留一点不说效率、不谈目标的闲暇，那也是生活的一部分。',
+  career:'CEO/高管、将军、法官、财务总监、校长、项目经理、政府官员、企业主。'
+};
+
+typeData['ESFJ'] = {
+  name:'执政官', icon:'🤝', sub:'关怀、社交、乐于助人',
+  desc:'你是朋友圈里那个「谁有事都第一个想起你」的人——不是因为你好说话，而是因为你是真的会把别人的事当成自己的事来办。你有一种让每个人都感到被欢迎的能力，这不是技巧而是发自内心的善意。但你也最容易因为「想让所有人都满意」而把自己累到透支。你最大的满足感不是来自被感谢，而是看到你在乎的人因为你的付出而过得更好了一点点。',
+  tags:['暖心周到','社交能手','乐于助人','认真负责','和谐维护'],
+  str:'社交嗅觉敏锐，能快速感知并调节团队氛围；热心助人的同时执行力极强，不只是嘴上关心；组织活动和凝聚人心是你的隐藏超能力；忠诚可靠，是朋友圈中稳定的「情感锚点」。',
+  grow:'你不可能让所有人都满意——这个道理简单，但你需要反复提醒自己。你的精力是有限的，先把自己照顾好再照顾别人才是可持续的模式。偶尔允许冲突存在，不是所有的「不和谐」都需要你出面调和。',
+  career:'护士、教师、销售、活动策划、人力资源、公关、酒店管理、辅导员、社区工作者。'
+};
+
+typeData['ISTP'] = {
+  name:'鉴赏家', icon:'🔧', sub:'实践、冷静、擅长动手',
+  desc:'你是那种「别人还在讨论该怎么做，你已经上手在做了」的人。你对「事物如何运作」有着本能的好奇——拆开一个东西再装回去对你来说是一种享受而非负担。在危机中你最冷静，因为你的大脑在别人还在恐慌的时候已经开始跑解决方案了。你话不多，但你做的每一件事都有分量。你享受自由和独立，不喜欢被别人管着，也不想管着别人。',
+  tags:['动手力强','冷静务实','善于解决问题','独立自由','灵活应变'],
+  str:'在紧急情况下保持冷静并快速做出判断的能力极强；对新工具和技术的上手速度惊人；不依赖指令也能独立找到最佳路径；实用主义让你很少被情绪或偏见影响判断。',
+  grow:'有些问题不是靠「修」就能解决的——尤其是涉及到人的情感的问题。你的沉默有时会被别人误解为冷漠，偶尔主动表达一下你的想法和感受会消解很多误会。找一个能让你长期深耕的领域——你的天赋值得比「到处救火」更多的回报。',
+  career:'工程师、飞行员、外科医生、程序员、机械师、摄影师、侦探、消防员。'
+};
+
+typeData['ISFP'] = {
+  name:'探险家', icon:'🎨', sub:'艺术感、灵活、温暖魅力',
+  desc:'你对美的感知力是刻在骨子里的——你不需要别人告诉你什么是好看、什么是好听的，你的直觉比任何教科书都准。你不喜欢冲突和紧张的氛围，宁愿退一步也不想让气氛变得尴尬。你活在当下的能力是一份珍贵的礼物，许多人在焦虑中错过了的生活细节，你都能真切地感受到。你不需要站到舞台正中央，但当你的作品或品味被人注意到时，那种被「懂」的感觉会让你觉得一切都很值得。',
+  tags:['审美独特','温和友善','享受当下','灵活适应','艺术天赋'],
+  str:'对美和质感的判断力几乎是一种本能而非技能；温和的存在让人感到舒适和放松；在需要动手创造的领域有着独特的优势；活在当下的能力让你比大多数人都更懂「生活」本身。',
+  grow:'你的安静和低调让你的才华常常被低估——你需要主动让别人看到你的价值。不要害怕冲突到完全压抑自己——立场不同不代表关系破裂。如果有一件事让你持续感到兴奋和投入，认真对待它——那可能就是你应该深耕的方向。',
+  career:'设计师、艺术家、音乐家、摄影师、花艺师、宠物医生、按摩理疗师、甜点师。'
+};
+
+typeData['ESTP'] = {
+  name:'企业家', icon:'🔥', sub:'精力充沛、敏锐、敢于冒险',
+  desc:'你不是那种坐在会议室里讨论「应该怎么做」的人——你更倾向于「先干了再说」。你的观察力极其敏锐，能在别人还在分析局面的几秒内就已经捕捉到了关键信息并做出了反应。你喜欢冒险不是因为你莽撞，而是因为你对自己的临场应变能力有绝对的信心。但你的精力来得快去得也快——一个没有挑战的环境会让你迅速失去热情，这时候你会开始寻找下一个刺激。',
+  tags:['行动力强','冒险精神','反应敏捷','务实果断','魅力四射'],
+  str:'在高压和高风险环境下反而发挥最好的那一类人；观察和应变能力几乎是一种本能而非需要刻意练习的技能；现实主义的判断力让你很少被花哨的理论迷惑；天生的说服力和个人魅力。',
+  grow:'不是每个问题都需要「立刻解决」——有些事需要耐心等待才能看到全貌。在行动之前多花五秒钟想一想「这会带来什么后果」，会让你少踩很多坑。找一个能帮你做长期规划的人或者系统——你的优势在「此刻」，但人生需要一些「长远」。',
+  career:'企业家、销售总监、运动员、急救医生、演员、消防员、投资交易员、军事人员。'
+};
+
+typeData['ESFP'] = {
+  name:'表演者', icon:'🎭', sub:'热情、随性、感染力强',
+  desc:'你走到哪里就把能量带到哪里。你不是故意要当人群的焦点——你只是天然地散发着一种让人想要靠近的快乐。你对周围的氛围有着敏锐的感知，能在一瞬间调整自己的状态来适配当下的场合。你不是「没心没肺」——你只是选择把注意力放在美好的事物上，而不是困在消极的情绪里。对你来说，生活是用来体验的，不是用来分析的。',
+  tags:['热情奔放','感染力强','善于社交','乐观开朗','活在当下'],
+  str:'能让一整个房间的气氛因为你而改变；适应力强到可以在任何人群中都找到自己的位置；你的乐观不是天真，而是一种主动的选择；对周围环境和人的变化有着超乎常人的敏感度。',
+  grow:'享受当下很重要，但偶尔也需要为明天做一些计划——不是为了限制自由，而是为了让你有更多选择的资本。你的热情有时候会让别人感到喘不过气，学着观察对方的反应并适时收一收。找到一个能同时给你自由和方向的平衡点，是你幸福感最大的来源。',
+  career:'演员、歌手、主持人、导游、销售、幼教、活动策划、健身教练、化妆师。'
+};
+
+// ============================================================
+//  动态职业建议生成器 — 根据每个人的6维得分定制
+// ============================================================
+function generateCareerAdvice(sc) {
+  var lines = [];
+
+  // E/I → 工作环境偏好
+  if (sc.pctEI >= 65) {
+    lines.push('你在人际互动中汲取能量，适合需要频繁沟通协作的角色——独处过多的工作反而会让你逐渐失去热情。');
+  } else if (sc.pctEI <= 35) {
+    lines.push('深度独处是你的充电方式，适合需要长时间专注和独立思考的岗位——开放式办公室和过多的会议对你来说是一种消耗。');
+  } else {
+    lines.push('你既能享受团队协作也能独立完成任务，在需要兼顾沟通和专注的岗位上往往能游刃有余。');
+  }
+
+  // S/N → 工作内容偏好
+  if (sc.pctSN >= 65) {
+    lines.push('你偏好务实、可落地的任务，对那些看得见摸得着的成果最有成就感。适合偏执行和实操类的工作，而非纯理论和概念探索。');
+  } else if (sc.pctSN <= 35) {
+    lines.push('你对抽象模式、未来趋势和深层含义有着天然的兴趣。重复性的、纯执行类的工作会很快耗尽你的热情，你需要一个能不断探索「可能性」的舞台。');
+  } else {
+    lines.push('你既能把控细节也能放眼全局，在需要「既见树木又见森林」的岗位上能发挥出独特的优势。');
+  }
+
+  // T/F → 决策与协作风格
+  if (sc.pctTF >= 65) {
+    lines.push('你倾向于用逻辑和数据驱动决策，适合需要客观分析和技术判断力的工作——在依赖规则和标准的领域里你如鱼得水。');
+  } else if (sc.pctTF <= 35) {
+    lines.push('你天生在意人的感受和关系的和谐，适合需要共情力、沟通温度和「人情味」的工作——没有人文关怀的冰冷环境会让你身心俱疲。');
+  } else {
+    lines.push('你在理性分析和感性共情之间找到了良好的平衡，在既需要专业判断又需要理解人的岗位上能够从容应对。');
+  }
+
+  // J/P → 工作节奏
+  if (sc.pctJP >= 65) {
+    lines.push('条理、秩序和明确的 deadline 是你高效运转的燃料。自由度过高、边界模糊的工作环境反而会让你焦虑。');
+  } else if (sc.pctJP <= 35) {
+    lines.push('你最好的状态往往来自灵活和自主——过于刻板的打卡制度、严格的流程管控会让你感到窒息。你需要一份给你足够弹性的工作。');
+  } else {
+    lines.push('你能适应有框架但不僵化的工作节奏——在有明确目标的前提下保有一定的灵活性，是你的最佳状态。');
+  }
+
+  // 情绪稳定性 → 压力环境
+  if (sc.pctES >= 65) {
+    lines.push('你的情绪韧性很强，能够在高压、突发状况频发的环境中保持冷静——危急时刻你往往是身边人最可靠的锚点。');
+  } else if (sc.pctES <= 35) {
+    lines.push('你对环境中的紧张和压力感知很敏锐。相比在高压行业硬撑，一个氛围友好、节奏可控的工作环境更能释放你的潜力——你不是「扛不住」，你需要一个不把你耗干的舞台。');
+  }
+
+  // 成就动机 → 成长路径
+  if (sc.pctAM >= 65) {
+    lines.push('你的内驱力很强，需要一份有上升空间、能不断挑战自己的职业路径——一个看得见的晋升阶梯比舒适的环境对你更重要。');
+  } else if (sc.pctAM <= 35) {
+    lines.push('工作与生活的平衡对你来说比「爬到最高处」更重要。一份能给你稳定感和足够个人时间的工作，可能比一个高强度高回报的岗位更适合你。');
+  }
+
+  return lines.join('');
+}
+
+// ============================================================
+//  展示结果
+// ============================================================
+function showResult() {
+  var sc = calcScores();
+  var baseType = sc.type.replace('-A','').replace('-T','');
+  var td = typeData[baseType];
+
+  document.getElementById('res-code').textContent = sc.type;
+  document.getElementById('res-name').textContent = td.name + '型';
+  document.getElementById('res-sub').textContent = sc.assertive ? '自信稳定型 · ' + td.sub : '敏感内省型 · ' + td.sub;
+
+  var dims = [
+    { left:'I 内向', right:'外向 E', pct:sc.pctEI, color:'#667eea' },
+    { left:'N 直觉', right:'感觉 S', pct:sc.pctSN, color:'#f093fb' },
+    { left:'F 情感', right:'思考 T', pct:sc.pctTF, color:'#f5576c' },
+    { left:'P 感知', right:'判断 J', pct:sc.pctJP, color:'#4facfe' },
+    { left:'焦虑敏感', right:'沉着稳定', pct:sc.pctES, color:'#43e97b' },
+    { left:'随遇而安', right:'目标驱动', pct:sc.pctAM, color:'#fbbf24' }
+  ];
+  var dh = '<h3>📊 六维分析</h3>';
+  for (var i = 0; i < dims.length; i++) {
+    var d = dims[i];
+    var bc = d.pct < 50 ? '#e53e3e' : d.color;
+    dh += '<div class="dim-row">';
+    dh += '<div class="dim-head"><span class="dim-left">' + d.left + '</span><span class="dim-right">' + d.right + '</span></div>';
+    dh += '<div class="dim-track"><div class="dim-mid"></div><div class="dim-fill" style="width:' + d.pct + '%;background:' + bc + '"></div></div>';
+    dh += '</div>';
+  }
+  document.getElementById('res-dims').innerHTML = dh;
+
+  // 在解读中加入A/T维度的补充说明
+  var atNote = sc.assertive ?
+    '此外，你在情绪稳定性维度上得分较高（-A 型），这意味着面对压力和不确定性时，你通常能保持冷静和自信，不太容易自我怀疑。' :
+    '此外，你在情绪稳定性维度上得分偏低（-T 型），这意味着你对自己有较高的要求，容易感知到情绪波动，但也因此更有自我觉察力和进步的动力。';
+  document.getElementById('res-desc').textContent = td.desc + ' ' + atNote;
+  document.getElementById('res-str').textContent = td.str;
+  document.getElementById('res-grow').textContent = td.grow;
+  document.getElementById('res-career').innerHTML =
+    '<div style="margin-bottom:8px;">' + generateCareerAdvice(sc) + '</div>' +
+    '<div style="font-size:13px;color:#718096;margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;">📌 适合探索的方向：' + td.career + '</div>';
+
+  var th = '';
+  for (var j = 0; j < td.tags.length; j++) {
+    th += '<span class="tag">' + td.tags[j] + '</span>';
+  }
+  // 加A/T标签
+  th += sc.assertive ? '<span class="tag" style="background:#e6ffed;color:#22543d;">自信稳定-A</span>' : '<span class="tag" style="background:#fff5f5;color:#9b2c2c;">敏感内省-T</span>';
+  document.getElementById('res-tags').innerHTML = th;
+
+  showPg('result');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // 条形图动画
+  var fills = document.querySelectorAll('#res-dims .dim-fill');
+  for (var k = 0; k < fills.length; k++) {
+    var el = fills[k];
+    var w = el.style.width;
+    el.style.width = '0';
+    (function(e, wd) { setTimeout(function() { e.style.width = wd; }, 150); })(el, w);
+  }
+}
+
+// ============================================================
+//  保存为图片（动态加载 html2canvas）
+// ============================================================
+function saveImage() {
+  if (typeof html2canvas !== 'undefined') {
+    captureAndDownload();
+    return;
+  }
+  var btn = document.getElementById('btn-save');
+  btn.textContent = '⏳ 正在加载组件...';
+  btn.disabled = true;
+  var script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+  script.onload = function() {
+    btn.textContent = '📸 保存结果为图片';
+    btn.disabled = false;
+    captureAndDownload();
+  };
+  script.onerror = function() {
+    btn.textContent = '📸 保存结果为图片';
+    btn.disabled = false;
+    alert('图片保存组件加载失败，请检查网络后重试。');
+  };
+  document.head.appendChild(script);
+}
+
+function captureAndDownload() {
+  var sc = calcScores();
+  var baseType = sc.type.replace('-A','').replace('-T','');
+  var td = typeData[baseType];
+  var dims = [
+    { left:'I 内向', right:'外向 E', pct:sc.pctEI },
+    { left:'N 直觉', right:'感觉 S', pct:sc.pctSN },
+    { left:'F 情感', right:'思考 T', pct:sc.pctTF },
+    { left:'P 感知', right:'判断 J', pct:sc.pctJP },
+    { left:'焦虑敏感', right:'沉着稳定', pct:sc.pctES },
+    { left:'随遇而安', right:'目标驱动', pct:sc.pctAM }
+  ];
+  var dh = '';
+  for (var i = 0; i < dims.length; i++) {
+    var d = dims[i];
+    dh += '<div style="margin-bottom:10px;font-size:13px;">';
+    dh += '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span style="color:#e53e3e;font-weight:700;">'+d.left+'</span><span style="color:#3182ce;font-weight:700;">'+d.right+'</span></div>';
+    dh += '<div style="height:10px;background:#edf2f7;border-radius:5px;overflow:hidden;position:relative;">';
+    dh += '<div style="position:absolute;top:-2px;bottom:-2px;left:50%;width:2px;background:#cbd5e0;"></div>';
+    dh += '<div style="height:100%;width:'+d.pct+'%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:5px;"></div></div></div>';
+  }
+  var th = '';
+  for (var j = 0; j < td.tags.length; j++) {
+    th += '<span style="display:inline-block;background:#f0edff;color:#6b46c1;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;margin:3px;">'+td.tags[j]+'</span>';
+  }
+  var cap = document.getElementById('capture-area');
+  cap.innerHTML =
+    '<div style="text-align:center;margin-bottom:22px;">'+
+    '<div style="font-size:50px;font-weight:900;letter-spacing:5px;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'+sc.type+'</div>'+
+    '<div style="font-size:24px;font-weight:800;color:#1a202c;margin:4px 0;">'+td.name+'型</div>'+
+    '<div style="font-size:14px;color:#718096;">'+td.sub+'</div></div>'+
+    '<div style="background:#fafafa;border-radius:14px;padding:18px;margin-bottom:12px;"><div style="font-size:15px;font-weight:700;color:#2d3748;margin-bottom:10px;">📊 四维分析</div>'+dh+'</div>'+
+    '<div style="background:#fafafa;border-radius:14px;padding:18px;margin-bottom:12px;"><div style="font-size:15px;font-weight:700;color:#2d3748;margin-bottom:8px;">📖 性格解读</div><div style="font-size:14px;color:#4a5568;line-height:1.8;">'+td.desc+'</div><div style="margin-top:10px;">'+th+'</div></div>'+
+    '<div style="display:flex;gap:10px;margin-bottom:12px;"><div style="flex:1;background:#fafafa;border-radius:14px;padding:18px;"><div style="font-size:15px;font-weight:700;color:#2d3748;margin-bottom:6px;">💪 优势</div><div style="font-size:13px;color:#4a5568;line-height:1.7;">'+td.str+'</div></div><div style="flex:1;background:#fafafa;border-radius:14px;padding:18px;"><div style="font-size:15px;font-weight:700;color:#2d3748;margin-bottom:6px;">🌱 成长盲区</div><div style="font-size:13px;color:#4a5568;line-height:1.7;">'+td.grow+'</div></div></div>'+
+    '<div style="background:#fafafa;border-radius:14px;padding:18px;margin-bottom:12px;"><div style="font-size:15px;font-weight:700;color:#2d3748;margin-bottom:6px;">💼 职业分析</div><div style="font-size:13px;color:#4a5568;line-height:1.7;">'+generateCareerAdvice(sc)+'</div><div style="font-size:12px;color:#718096;margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0;">📌 参考方向：'+td.career+'</div></div>'+
+    '<div style="text-align:center;font-size:11px;color:#cbd5e0;margin-top:14px;">MBTI 性格测试 · '+new Date().toLocaleDateString('zh-CN')+'</div>';
+
+  html2canvas(cap, { backgroundColor:'#ffffff', scale:2, useCORS:true, logging:false }).then(function(canvas) {
+    var a = document.createElement('a');
+    a.download = 'MBTI性格测试_'+sc.type+'_'+td.name+'.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  }).catch(function() { alert('截图失败，请重试。'); });
+}
+
+// ==================== 重新测试 ====================
+function retakeTest() {
+  showPg('welcome');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+})();
+</script>
+
+</body>
+</html>
