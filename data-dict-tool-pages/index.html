@@ -198,6 +198,20 @@ tbody tr:nth-child(even):hover { background: var(--primary-50); }
 /* Action cell */
 .action-cell { display: flex; gap: 2px; justify-content: center; }
 
+/* GitHub token modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.modal-box { background: #fff; border-radius: 12px; padding: 28px; width: 480px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.15); }
+.modal-box h3 { font-size: 16px; margin-bottom: 8px; }
+.modal-box p { font-size: 13px; color: var(--gray-500); margin-bottom: 16px; line-height: 1.6; }
+.modal-box label { font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 4px; }
+.modal-box input { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+.modal-box .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.modal-box .hint { font-size: 11px; color: var(--gray-400); }
+.modal-box a { color: var(--primary-600); }
+
+.btn-gh-publish { background: #24292f; color: #fff; border: none; }
+.btn-gh-publish:hover { background: #1b1f23; }
+
 /* ── Tabs (main navigation) ── */
 .main-tabs { display: flex; gap: 0; margin-bottom: 20px; background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
 .main-tab { flex: 1; padding: 14px 18px; cursor: pointer; font-size: 13px; font-weight: 600; text-align: center; border: none; background: #fff; color: var(--gray-500); transition: all .15s; border-bottom: 3px solid transparent; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -330,6 +344,10 @@ tbody tr:nth-child(even):hover { background: var(--primary-50); }
         <button class="btn btn-publish admin-only" onclick="downloadUpdatedPage()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
           同步发布
+        </button>
+        <button class="btn btn-gh-publish admin-only" onclick="publishToGitHub()" id="btnGHPublish">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+          发布到 GitHub
         </button>
       </div>
     </div>
@@ -1780,6 +1798,21 @@ tbody tr:nth-child(even):hover { background: var(--primary-50); }
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- GitHub Token Modal -->
+<div class="modal-overlay" id="tokenModal" style="display:none">
+  <div class="modal-box">
+    <h3>GitHub 发布配置</h3>
+    <p>需要 GitHub Personal Access Token 才能一键发布到 GitHub Pages。<br>在 <a href="https://github.com/settings/tokens/new?scopes=repo&description=Data-Dict-Tool" target="_blank">github.com/settings/tokens</a> 创建 Token，勾选 <b>repo</b> 权限即可。</p>
+    <label>GitHub Token</label>
+    <input type="password" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxx">
+    <div class="hint">Token 仅保存在当前浏览器 localStorage，不会上传到任何服务器</div>
+    <div class="btn-row">
+      <button class="btn" onclick="closeModal('tokenModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveGitHubToken()">保存并发布</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const ADMIN_PASSWORD = '970922ltt';
 const EMBEDDED_DATA = {"platforms":[{"id":"微信","name":"微信","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","是否认证","认证信息","地区"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","封面图URL","发布地区","IP属地","账号ID","是否原创","原创作者"]},"interaction":{"name":"互动数据","fields":["点赞数","阅读数","转发数","在看数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","评论点赞数"]}},"order":0},{"id":"微博","name":"微博","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","是否认证","认证信息","性别","IP属地","注册时间"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","封面图URL","发布地区","IP属地","是否原创","原创作者","原创链接","头像URL"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","转发数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","账号ID","简介","注册时间","关注数","粉丝数","作品数"]}},"order":1},{"id":"抖音","name":"抖音","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","获赞数","主页链接","是否认证","认证信息","IP属地"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","封面图URL","发布地区","IP属地","作者ID","音乐链接"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","转发数","收藏数","评论数、点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","IP属地","点赞数","评论数"]}},"order":2},{"id":"快手","name":"快手","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","是否认证","认证信息","IP属地","性别"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","发布地区","IP属地","作者ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","转发数","收藏数","阅读数、评论数、点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","点赞数"]}},"order":3},{"id":"b站","name":"B站","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","主页链接","是否认证","认证信息"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","发布地区","作者ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","转发数","踩数","打赏数","收藏数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","点赞数"]}},"order":4},{"id":"小红书","name":"小红书","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","性别","IP属地","是否认证","认证信息","获赞与收藏数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","封面图URL","IP属地","账号ID","转发数","点赞数","是否原创","账号名称","阅读数","评论数","频道名称channel_name","来源域名","news_video_urls","发布时间news_posttime","不喜欢数"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","转发数","收藏数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","评论者ID","评论者头像","点赞数"]}},"order":5},{"id":"今日头条","name":"今日头条","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","获赞数","认证信息","主页链接","IP属地","是否认证"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","发布地区","IP属地","账号ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","转发数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","点赞数","评论数"]}},"order":6},{"id":"视频号","name":"视频号","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像url","简介","IP","性别","是否认证"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","转发数","收藏数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":7},{"id":"知乎","name":"知乎","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","获赞数","是否认证","性别","收藏数","点赞数","提问数","回答数","IP属地"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","封面图URL","发布地区","IP属地","账号ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","点赞数（回答）","阅读数","关注数（问题）;评论数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","评论者头像","点赞数","账号ID"]}},"order":8},{"id":"西瓜视频","name":"西瓜视频","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","简介","粉丝数","关注数","作品数","获赞数","主页链接","认证信息","头像URL","IP属地","是否认证"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","发布地区","IP属地","作者ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","转发数","播放数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","点赞数"]}},"order":9},{"id":"懂车帝app","name":"懂车帝","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","主页链接","认证信息","是否认证","获赞数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数（部分有）"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","IP属地","点赞数","评论数"]}},"order":10},{"id":"易车","name":"易车","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","主页链接","简介","是否认证","认证信息","级别","IP属地","粉丝数","关注数","获赞数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","转发数","点赞数","是否原创","账号名称","不喜欢数","主页链接","阅读数","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","踩数","阅读数、评论数、点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","点赞数"]}},"order":11},{"id":"爱奇艺","name":"爱奇艺","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","获赞数","是否认证","认证信息","主页链接","IP属地"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","热度","热度值","评分"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","播放数","阅读数"]},"comment":{"name":"评论数据","fields":["评论时间","评论内容"]}},"order":12},{"id":"微视","name":"微视","categories":{"account":{"name":"用户详情数据","fields":["账号名称","头像URL","简介","粉丝数","关注数","作品数","获赞数","性别","账号等级"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","音乐名称"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","收藏数","阅读数、点赞数、评论数"]},"comment":{"name":"评论数据","fields":[]}},"order":13},{"id":"美拍","name":"美拍","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","获赞数","性别"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","播放数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":14},{"id":"百家号_百度新闻","name":"百家号（百度新闻）","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","作品数","获赞数","media_identity","主页链接","是否认证","认证信息","IP属地"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":15},{"id":"一点资讯","name":"一点资讯","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","作品数","主页链接","是否认证","认证信息","关注数","阅读数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","封面图URL"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","阅读数(仅视频有)"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","评论点赞数"]}},"order":16},{"id":"太平洋号_太平洋汽车网","name":"太平洋号（太平洋汽车网）","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","作品数","主页链接","阅读数","人气值(存于粉丝数)"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":17},{"id":"车家号","name":"车家号","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","作品数","主页链接","是否认证","粉丝数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","点赞数","是否原创","账号名称","主页链接","阅读数","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数","收藏数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":18},{"id":"大风号_凤凰新闻","name":"大风号（凤凰新闻）","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","简介","粉丝数","主页链接","头像URL","是否认证","认证信息","IP属地"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":19},{"id":"大鱼号","name":"大鱼号","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","主页链接","IP属地","总点赞数","作品数","是否认证","粉丝数","获赞数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","点赞数","是否原创","账号名称","主页链接","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":20},{"id":"网易号","name":"网易号","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","作品数","主页链接","关注数","认证信息","IP属地","是否认证"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","点赞数","是否原创","账号名称","主页链接","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":21},{"id":"腾讯新闻","name":"腾讯新闻","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","地区"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","转发数","点赞数","是否原创","账号名称","不喜欢数","主页链接","阅读数","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","收藏数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":22},{"id":"央视频","name":"央视频","categories":{"account":{"name":"用户详情数据","fields":["账号名称","简介","粉丝数","视频数","播放数","头像URL","总播放数","主页链接","账号ID","作品数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","播放数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接","点赞数"]}},"order":23},{"id":"搜狐号_搜狐网","name":"搜狐号（搜狐网）","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","作品数","media_identity","主页链接","粉丝数","阅读数","获赞数","是否认证","认证信息","关注数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","阅读数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":24},{"id":"企鹅号_腾讯新闻","name":"企鹅号（腾讯新闻）","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","主页链接","IP属地","作品数","获赞数","关注数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":25},{"id":"趣头条","name":"趣头条","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","作品数","media_identity","主页链接","阅读数","收藏数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","点赞数","是否原创","账号名称","主页链接","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":26},{"id":"爱咖号","name":"爱咖号","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","作品数","主页链接","是否认证"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","发布地区","是否原创","账号名称","主页链接","阅读数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["阅读数"]},"comment":{"name":"评论数据","fields":[]}},"order":27},{"id":"uc头条","name":"UC头条","categories":{"account":{"name":"用户详情数据","fields":["账号名称","头像URL","简介","主页链接"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","来源"]},"interaction":{"name":"互动数据","fields":["评论数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":28},{"id":"腾讯视频","name":"腾讯视频","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","视频数量","订阅量"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数","阅读数(部分有)","阅读数(部分有)、评论数"]},"comment":{"name":"评论数据","fields":["评论时间","评论内容"]}},"order":29},{"id":"优酷视频","name":"优酷视频","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","粉丝数","关注数","视频数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","播放数","阅读数(热度)、评论数、点赞数","阅读数(热度)"]},"comment":{"name":"评论数据","fields":[]}},"order":30},{"id":"新浪看点号_新浪网","name":"新浪看点号（新浪网）","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","头像URL","简介","主页链接","粉丝数","关注数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":31},{"id":"搜狐视频","name":"搜狐视频","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","认证信息"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","播放数","踩数","阅读数"]},"comment":{"name":"评论数据","fields":["评论时间","评论内容"]}},"order":32},{"id":"新浪新闻","name":"新浪新闻","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","来源","标签","转发数","点赞数","是否原创","账号名称","不喜欢数","主页链接","阅读数","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","阅读数","阅读数(仅视频有)"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":33},{"id":"人民日报","name":"人民日报","categories":{"account":{"name":"用户详情数据","fields":["账号ID","头像URL","简介","账号名称","主页链接","粉丝数","作品数","影响力"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数"]},"comment":{"name":"评论数据","fields":[]}},"order":34},{"id":"澎湃新闻","name":"澎湃新闻","categories":{"account":{"name":"用户详情数据","fields":["账号ID","账号名称","主页链接","头像URL","简介","是否认证","IP属地","政务/湃客指数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","来源","频道板块","点赞数","是否原创","账号名称","主页链接","评论数","原创作者","账号ID","原创文章news_origin","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":35},{"id":"zaker新闻","name":"Zaker新闻","categories":{"account":{"name":"用户详情数据","fields":["头像URL","账号ID","账号名称","主页链接","简介"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":36},{"id":"北京时间","name":"北京时间","categories":{"account":{"name":"用户详情数据","fields":["账号ID","账号名称","主页链接","头像URL","简介","是否认证"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","责任编辑","点赞数","是否原创","账号名称","主页链接","阅读数","评论数","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数","阅读数"]},"comment":{"name":"评论数据","fields":[]}},"order":37},{"id":"梨视频","name":"梨视频","categories":{"account":{"name":"用户详情数据","fields":["账号名称","账号ID","简介"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数"]},"comment":{"name":"评论数据","fields":["评论时间","评论内容"]}},"order":38},{"id":"网易新闻客户端","name":"网易新闻客户端","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","点赞数","是否原创","账号名称","主页链接","账号ID","来源域名","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":39},{"id":"看点快报","name":"看点快报","categories":{"account":{"name":"用户详情数据","fields":["账号ID","账号名称","主页链接","头像URL"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要"]},"interaction":{"name":"互动数据","fields":["评论数","点赞数"]},"comment":{"name":"评论数据","fields":["评论者","评论内容","评论时间","原文链接"]}},"order":40},{"id":"新浪视频","name":"新浪视频","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","来源","标签"]},"interaction":{"name":"互动数据","fields":["评论数","播放数","阅读数"]},"comment":{"name":"评论数据","fields":["评论时间","评论内容"]}},"order":41},{"id":"新华社","name":"新华社","categories":{"account":{"name":"用户详情数据","fields":["账号ID","账号名称","主页链接","头像URL","简介","粉丝数","阅读数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","来源","频道板块","账号名称","主页链接","阅读数","评论数","频道名称channel_name","账号ID","原创文章news_origin","来源域名","news_headimg_url","news_img_urls","发布时间news_posttime"]},"interaction":{"name":"互动数据","fields":["评论数","阅读数"]},"comment":{"name":"评论数据","fields":["评论时间","评论内容"]}},"order":42},{"id":"央视新闻__newscctv_net","name":"央视新闻+（newscctv.net）","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","站点名"]},"interaction":{"name":"互动数据","fields":["阅读数"]},"comment":{"name":"评论数据","fields":[]}},"order":43},{"id":"汽车头条","name":"汽车头条","categories":{"account":{"name":"用户详情数据","fields":["账号ID","账号名称","主页链接","头像URL","简介","是否认证","认证信息","作品数","粉丝数"]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["评论数","阅读数"]},"comment":{"name":"评论数据","fields":[]}},"order":44},{"id":"新京报","name":"新京报","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":["点赞数"]},"comment":{"name":"评论数据","fields":[]}},"order":45},{"id":"学习强国_网站","name":"学习强国（网站）","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID","来源","责任编辑"]},"interaction":{"name":"互动数据","fields":[]},"comment":{"name":"评论数据","fields":[]}},"order":46},{"id":"看看新闻","name":"看看新闻","categories":{"account":{"name":"用户详情数据","fields":[]},"article":{"name":"文章详情数据","fields":["标题","发布时间","文章链接","发布者","正文","摘要","文章ID"]},"interaction":{"name":"互动数据","fields":[]},"comment":{"name":"评论数据","fields":[]}},"order":47}]};
@@ -1926,6 +1959,100 @@ function downloadUpdatedPage() {
   URL.revokeObjectURL(url);
   showToast('下载完成！将此文件部署到服务器即可分享更新', 'ok');
 }
+
+// ═══════════════════════════════════
+// GitHub One-Click Publish
+// ═══════════════════════════════════
+
+function publishToGitHub() {
+  let token = localStorage.getItem('gh_token');
+  if (!token) {
+    showTokenModal();
+    return;
+  }
+  doGitHubPublish(token);
+}
+
+function showTokenModal() {
+  document.getElementById('tokenModal').style.display = 'flex';
+}
+
+function saveGitHubToken() {
+  const token = document.getElementById('ghTokenInput').value.trim();
+  if (!token) return;
+  localStorage.setItem('gh_token', token);
+  closeModal('tokenModal');
+  doGitHubPublish(token);
+}
+
+async function doGitHubPublish(token) {
+  const btn = document.getElementById('btnGHPublish');
+  btn.disabled = true;
+  btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 发布中...';
+
+  try {
+    const newData = JSON.stringify({platforms});
+    // Get full HTML with updated embedded data
+    let newHTML = document.documentElement.outerHTML;
+    newHTML = '<!DOCTYPE html>
+' + newHTML.replace(
+      /const EMBEDDED_DATA = \{[\s\S]*?\};/,
+      'const EMBEDDED_DATA = ' + newData + ';'
+    );
+
+    const owner = '1319210151';
+    const repo = 'personality-test';
+    const path = 'data-dict-tool-pages/index.html';
+
+    // Get current file SHA
+    const getResp = await fetch('https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!getResp.ok) {
+      if (getResp.status === 401) throw new Error('Token无效');
+      throw new Error('获取文件信息失败: ' + getResp.status);
+    }
+    const fileInfo = await getResp.json();
+
+    // Base64 encode
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(newHTML);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const content = btoa(binary);
+
+    // Update file
+    const putResp = await fetch('https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' },
+      body: JSON.stringify({
+        message: '更新字段表数据',
+        content: content,
+        sha: fileInfo.sha,
+        branch: 'master'
+      })
+    });
+
+    if (!putResp.ok) {
+      const err = await putResp.json();
+      throw new Error(err.message || '发布失败');
+    }
+
+    showToast('已发布到 GitHub！约1分钟后生效', 'ok');
+  } catch (e) {
+    showToast('发布失败: ' + e.message, 'err');
+    if (e.message.includes('Token无效')) {
+      localStorage.removeItem('gh_token');
+      setTimeout(showTokenModal, 1500);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg> 发布到 GitHub';
+  }
+}
+
 
 
 // ── Init (extended) ──
