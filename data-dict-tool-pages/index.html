@@ -1994,8 +1994,7 @@ async function doGitHubPublish(token) {
     const newData = JSON.stringify({platforms});
     // Get full HTML with updated embedded data
     let newHTML = document.documentElement.outerHTML;
-    newHTML = '<!DOCTYPE html>
-' + newHTML.replace(
+    newHTML = '<!DOCTYPE html>\n' + newHTML.replace(
       /const EMBEDDED_DATA = \{[\s\S]*?\};/,
       'const EMBEDDED_DATA = ' + newData + ';'
     );
