@@ -1,4 +1,4 @@
-const CACHE = 'english-tracker-v4';
+const CACHE = 'english-tracker-v5';
 const FILES = [
   './',
   './index.html',

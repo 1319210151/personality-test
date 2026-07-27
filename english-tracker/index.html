@@ -145,11 +145,25 @@ body{
 .tag-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .tag{font-size:12px;padding:6px 14px;border-radius:14px;border:1px solid var(--brown-lt);background:var(--card);color:var(--text-lt);cursor:pointer;font-weight:600;transition:all .15s}
 .tag.active{background:var(--brown);color:#fff;border-color:var(--brown)}
-.vocab-item{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:8px}
-.vocab-item .v-phrase{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
+.vocab-item{background:var(--card);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin-bottom:8px;position:relative}
+.vocab-item .v-phrase{font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px}
 .vocab-item .v-phonetic{font-size:12px;color:var(--blue-dk);margin-bottom:4px}
 .vocab-item .v-meaning{font-size:14px;color:var(--text-lt)}
 .vocab-item .v-tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:8px;background:var(--blue-lt);color:var(--blue-dk);margin-top:6px}
+.vocab-item .v-row{display:flex;align-items:center;justify-content:space-between}
+.vocab-item .v-actions{display:flex;gap:6px;flex-shrink:0}
+.v-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--brown-lt);background:var(--card);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.v-btn:active{transform:scale(.9)}
+.v-btn.playing{background:var(--brown);color:#fff}
+.v-btn.mastered{background:var(--green);border-color:var(--green);color:#fff}
+.v-btn.unmastered{background:var(--red-lt);border-color:var(--red);color:var(--red)}
+.vocab-item.mastered{border-left:3px solid var(--green);opacity:.7}
+.vocab-item.mastered .v-phrase{color:var(--green)}
+.plan-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
+.plan-month{font-size:15px;font-weight:700;color:var(--brown);margin-bottom:6px}
+.plan-focus{font-size:13px;color:var(--text-lt);line-height:1.6}
+.plan-progress{height:6px;background:#E8E0D5;border-radius:3px;margin-top:8px;overflow:hidden}
+.plan-progress .pp-fill{height:100%;background:var(--brown);border-radius:3px;transition:width .4s}
 
 /* ===== Review Page ===== */
 .heatmap-wrap{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
@@ -285,6 +299,14 @@ body{
 
 <!-- ===== Page: Vocab 词句本 ===== -->
 <div class="page" id="page-vocab">
+  <div class="sec-title"><span>📅</span>年度学习计划</div>
+  <div class="plan-card" id="planCard">
+    <div class="plan-month" id="planMonth"></div>
+    <div class="plan-focus" id="planFocus"></div>
+    <div class="plan-progress"><div class="pp-fill" id="planProgressBar"></div></div>
+    <div style="font-size:11px;color:var(--text-xlt);margin-top:4px" id="planProgressLabel"></div>
+  </div>
+
   <div class="sec-title"><span>📝</span>今日职场词句（20条）</div>
   <div class="tag-row" id="vocabTags">
     <button class="tag active" data-tag="all">全部</button>
@@ -382,10 +404,21 @@ function getTodayContent() {
   const idx = getDayIndex();
   const dow = new Date().getDay();
   const topicIdx = dow === 0 ? 6 : dow - 1;
-  const topicPassages = CONTENT_POOL.listening.passages.filter(p => p.topic === topicIdx);
+  const currentMonth = new Date().getMonth() + 1;
+
+  let topicPassages = CONTENT_POOL.listening.passages.filter(p => p.topic === topicIdx && p.month === currentMonth);
+  if (topicPassages.length === 0) {
+    topicPassages = CONTENT_POOL.listening.passages.filter(p => p.topic === topicIdx);
+  }
   const passageIdx = Math.floor(idx / 7) % topicPassages.length;
   const passage = topicPassages[passageIdx];
-  const dialogue = CONTENT_POOL.listening.dialogues[idx % CONTENT_POOL.listening.dialogues.length];
+
+  let monthDialogues = CONTENT_POOL.listening.dialogues.filter(d => d.month === currentMonth);
+  if (monthDialogues.length === 0) {
+    monthDialogues = CONTENT_POOL.listening.dialogues;
+  }
+  const dialogue = monthDialogues[idx % monthDialogues.length];
+
   return { passage, dialogue, topic: WEEK_THEMES[topicIdx], topicIdx, date: todayKey() };
 }
 function getDefaultData() {
@@ -918,6 +951,8 @@ document.addEventListener('click', function(e) {
 // RENDER: Vocab Page
 // =============================================
 let vocabFilter = 'all';
+let vocabRecognition = null;
+let vocabRecognizingIdx = -1;
 
 function getTodayPhrases() {
   const idx = getDayIndex();
@@ -925,7 +960,6 @@ function getTodayPhrases() {
   Object.entries(DEFAULT_PHRASES).forEach(([tag, phrases]) => {
     phrases.forEach(p => allPhrases.push({...p, tag}));
   });
-  // Rotate based on day
   const start = (idx * 5) % allPhrases.length;
   const selected = [];
   for (let i = 0; i < 20; i++) {
@@ -934,33 +968,167 @@ function getTodayPhrases() {
   return selected;
 }
 
+function isPhraseMastered(phrase) {
+  const d = loadData();
+  if (!d._masteredPhrases) d._masteredPhrases = {};
+  return !!d._masteredPhrases[phrase.en];
+}
+
+function togglePhraseMastered(phrase) {
+  const d = loadData();
+  if (!d._masteredPhrases) d._masteredPhrases = {};
+  if (d._masteredPhrases[phrase.en]) {
+    delete d._masteredPhrases[phrase.en];
+  } else {
+    d._masteredPhrases[phrase.en] = true;
+  }
+  saveData(d);
+  renderVocab();
+}
+
+function speakPhrase(text) {
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.85;
+  u.lang = data.settings.accent === 'US' ? 'en-US' : 'en-GB';
+  window.speechSynthesis.speak(u);
+}
+
+function startVocabRecognition(idx, phraseEn) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { showToast('请使用 Chrome 浏览器'); return; }
+
+  if (vocabRecognition) { vocabRecognition.stop(); }
+
+  vocabRecognition = new SpeechRecognition();
+  vocabRecognition.lang = data.settings.accent === 'US' ? 'en-US' : 'en-GB';
+  vocabRecognition.continuous = false;
+  vocabRecognition.interimResults = false;
+
+  vocabRecognizingIdx = idx;
+  vocabRecognition.onresult = (event) => {
+    const spoken = event.results[0][0].transcript.toLowerCase().replace(/[^\w\s']/g, '').trim();
+    const target = phraseEn.toLowerCase().replace(/[^\w\s']/g, '').trim();
+    const match = spoken === target;
+    showToast(match ? '✅ 发音准确！' : `⚠️ 你说的是: "${spoken}"，请再试`);
+    vocabRecognizingIdx = -1;
+  };
+  vocabRecognition.onerror = () => { vocabRecognizingIdx = -1; };
+  vocabRecognition.onend = () => { vocabRecognizingIdx = -1; renderVocab(); };
+  vocabRecognition.start();
+  showToast('🎤 请朗读这个短语...');
+}
+
 function renderVocab() {
   const phrases = getTodayPhrases();
   const filtered = vocabFilter === 'all' ? phrases : phrases.filter(p => p.tag === vocabFilter);
   const tagNames = {meeting:'会议用语',email:'邮件用语',client:'客户沟通',softskill:'职场软实力'};
 
-  document.getElementById('vocabList').innerHTML = filtered.map(p => `
-    <div class="vocab-item">
-      <div class="v-phrase">${p.en}</div>
+  document.getElementById('vocabList').innerHTML = filtered.map((p, i) => {
+    const mastered = isPhraseMastered(p);
+    return `
+    <div class="vocab-item${mastered?' mastered':''}" id="vocab-${i}">
+      <div class="v-row">
+        <div style="min-width:0"><div class="v-phrase">${p.en}</div></div>
+        <div class="v-actions">
+          <button class="v-btn btn-speak" data-idx="${i}" data-text="${p.en.replace(/"/g,'&quot;')}" title="发音">🔊</button>
+          <button class="v-btn btn-record-vocab ${vocabRecognizingIdx===i?'playing':''}" data-idx="${i}" data-text="${p.en.replace(/"/g,'&quot;')}" title="跟读">🎤</button>
+          <button class="v-btn ${mastered?'mastered':'unmastered'} btn-master" data-idx="${i}" data-text="${p.en.replace(/"/g,'&quot;')}" title="${mastered?'已掌握':'未掌握'}">${mastered?'✅':'❌'}</button>
+        </div>
+      </div>
       <div class="v-phonetic">${p.ipa || ''}</div>
       <div class="v-meaning">${p.zh}</div>
       <span class="v-tag">${tagNames[p.tag] || p.tag}</span>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
-  // Review queue (simulated Ebbinghaus)
+  // Review queue
   const reviewPhrases = phrases.slice(0, 6);
-  document.getElementById('reviewVocabList').innerHTML = reviewPhrases.map(p => `
-    <div class="vocab-item" style="border-left:3px solid var(--warn)">
-      <div class="v-phrase">${p.en}</div>
+  document.getElementById('reviewVocabList').innerHTML = reviewPhrases.map(p => {
+    const mastered = isPhraseMastered(p);
+    return `
+    <div class="vocab-item${mastered?' mastered':''}" style="border-left:3px solid var(--warn)">
+      <div class="v-row">
+        <div><div class="v-phrase">${p.en}</div></div>
+        <div class="v-actions">
+          <button class="v-btn btn-speak" data-text="${p.en.replace(/"/g,'&quot;')}" title="发音">🔊</button>
+        </div>
+      </div>
       <div class="v-meaning">${p.zh}</div>
       <span class="v-tag">⏰ 待复习</span>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+
+  // Year plan
+  renderYearPlan();
 }
 
-// Vocab tag filter
+// Year curriculum plan
+const MONTHLY_PLAN = [
+  {month:'1月',focus:'夯实基础：四级核心听力词汇 + 慢速英语习惯培养',topics:['职场自我介绍','日常办公对话','简单邮件沟通'],level:'B1'},
+  {month:'2月',focus:'听力突破：连读弱读专项 + VOA慢速精听',topics:['电话沟通','团队协作','项目进度基础'],level:'B1'},
+  {month:'3月',focus:'口语起步：逐句模仿跟读 + 影子训练法入门',topics:['小型会议发言','同事交流','工作计划'],level:'B1'},
+  {month:'4月',focus:'词汇扩展：职场高频短语积累 + 邮件写作',topics:['邮件正式用语','商务邀约','跨部门协调'],level:'B1-B2'},
+  {month:'5月',focus:'会议专题：英文会议发言 + 观点表达',topics:['提案陈述','意见表达','会议纪要'],level:'B1-B2'},
+  {month:'6月',focus:'客户沟通：商务谈判基础 + 电话英语',topics:['客户拜访','需求沟通','价格谈判'],level:'B1-B2'},
+  {month:'7月',focus:'演讲能力：英文汇报技巧 + PPT演讲',topics:['工作汇报','数据呈现','年终总结'],level:'B2'},
+  {month:'8月',focus:'商务写作：报告撰写 + 提案写作',topics:['商业报告','项目提案','正式函件'],level:'B2'},
+  {month:'9月',focus:'高阶听力：常速英语 + BBC/TED精听',topics:['行业趋势','技术创新','领导力话题'],level:'B2'},
+  {month:'10月',focus:'即兴表达：脱稿复述 + 即兴问答',topics:['Q&A应对','即兴发言','跨文化场景'],level:'B2'},
+  {month:'11月',focus:'综合实战：模拟商务场景全流程',topics:['完整项目周期','多方会议','危机沟通'],level:'B2'},
+  {month:'12月',focus:'年终复习：全年薄弱点回顾 + 能力测评',topics:['综合复习','模拟测试','新年计划'],level:'B2'},
+];
+
+function renderYearPlan() {
+  const now = new Date();
+  const monthIdx = now.getMonth(); // 0=Jan
+  const plan = MONTHLY_PLAN[monthIdx];
+  const daysInMonth = new Date(now.getFullYear(), monthIdx+1, 0).getDate();
+  const currentDay = now.getDate();
+  const pct = Math.round(currentDay / daysInMonth * 100);
+
+  document.getElementById('planMonth').textContent = `📌 ${plan.month} · ${plan.level} 级 · "${plan.focus.split('：')[0]}"`;
+  document.getElementById('planFocus').innerHTML = `
+    <div><b>本月目标：</b>${plan.focus}</div>
+    <div style="margin-top:4px"><b>核心场景：</b>${plan.topics.join(' / ')}</div>
+  `;
+  document.getElementById('planProgressBar').style.width = pct + '%';
+  document.getElementById('planProgressLabel').textContent = `本月进度 ${currentDay}/${daysInMonth} 天 (${pct}%)`;
+}
+
+// Vocab button handlers
 document.addEventListener('click', function(e) {
+  // Speak button
+  const speakBtn = e.target.closest('.btn-speak');
+  if (speakBtn) {
+    e.stopPropagation();
+    const text = speakBtn.dataset.text;
+    speakPhrase(text);
+    speakBtn.classList.add('playing');
+    setTimeout(() => speakBtn.classList.remove('playing'), 1500);
+    return;
+  }
+
+  // Record vocab button
+  const recordBtn = e.target.closest('.btn-record-vocab');
+  if (recordBtn) {
+    e.stopPropagation();
+    const idx = parseInt(recordBtn.dataset.idx);
+    const text = recordBtn.dataset.text;
+    startVocabRecognition(idx, text);
+    return;
+  }
+
+  // Master toggle button
+  const masterBtn = e.target.closest('.btn-master');
+  if (masterBtn) {
+    e.stopPropagation();
+    const text = masterBtn.dataset.text;
+    togglePhraseMastered({en: text});
+    return;
+  }
+
+  // Vocab tag filter
   if (e.target.closest('#vocabTags') && e.target.classList.contains('tag')) {
     document.querySelectorAll('#vocabTags .tag').forEach(t => t.classList.remove('active'));
     e.target.classList.add('active');
