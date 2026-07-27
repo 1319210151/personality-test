@@ -1,0 +1,24 @@
+{
+  "name": "英语学习工作台",
+  "short_name": "英语学习",
+  "description": "每日英语学习监督与打卡工具",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F5F0E8",
+  "theme_color": "#C4A882",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23C4A882'/><text x='96' y='110' text-anchor='middle' font-size='90' filter='drop-shadow(0 2px 4px rgba(0,0,0,0.2))'>📚</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%23C4A882'/><text x='256' y='300' text-anchor='middle' font-size='240' filter='drop-shadow(0 4px 8px rgba(0,0,0,0.2))'>📚</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
